@@ -30,14 +30,14 @@ type TodoItem struct {
 func main() {
 	a := app.NewWithID("GoDo")
 	w := a.NewWindow("GoDo")
-
+	w.SetIcon(resourceLogoWindowmanagerWhitePng)
 	if desk, ok := a.(desktop.App); ok {
 		m := fyne.NewMenu("GoDo",
 			fyne.NewMenuItem("show", func() {
 				w.Show()
 			}))
 		desk.SetSystemTrayMenu(m)
-		desk.SetSystemTrayIcon(resourceIconSystemTrayPng)
+		desk.SetSystemTrayIcon(resourceLogoWindowmanagerWhitePng)
 	}
 
 	w.SetContent(makeGUI(a, w))
