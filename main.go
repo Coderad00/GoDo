@@ -1,9 +1,12 @@
 //go:generate fyne bundle -o bundled.go assets
+
 package main
 
 import (
 	"fmt"
 	"image/color"
+	"log"
+	"os/exec"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -14,8 +17,6 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/bradhe/stopwatch"
-	"log"
-	"os/exec"
 )
 
 type TodoItem struct {
@@ -29,15 +30,15 @@ type TodoItem struct {
 	Stopwatch     stopwatch.Watch
 }
 
+var todoList []*TodoItem
+
 func main() {
 	a := app.NewWithID("GoDo")
 	w := a.NewWindow("GoDo")
 	w.SetIcon(resourceLogoWindowmanagerWhitePng)
+
 	if desk, ok := a.(desktop.App); ok {
-		m := fyne.NewMenu("GoDo",
-			fyne.NewMenuItem("show", func() {
-				w.Show()
-			}))
+		m := fyne.NewMenu("GoDo", fyne.NewMenuItem("show", func() { w.Show() }))
 		desk.SetSystemTrayMenu(m)
 		desk.SetSystemTrayIcon(resourceLogoWindowmanagerWhitePng)
 	}
@@ -85,12 +86,7 @@ func showNewTodoWindow(a fyne.App, w fyne.Window) {
 		inputWindow.Close()
 	}
 
-	inputContainer := container.NewVBox(
-		taskEntry,
-		durationSelect,
-		widget.NewButton("Save", saveCallback),
-	)
-
+	inputContainer := container.NewVBox(taskEntry, durationSelect, widget.NewButton("Save", saveCallback))
 	inputWindow.SetContent(inputContainer)
 	inputWindow.Show()
 }
@@ -112,7 +108,6 @@ func (t *GoDoTheme) Size(name fyne.ThemeSizeName) float32 {
 		return 12
 	}
 	return t.Theme.Size(name)
-
 }
 
 func (t *TodoItem) StartTimer() {
@@ -182,8 +177,6 @@ func playSound() {
 		log.Fatal(err)
 	}
 }
-
-var todoList []*TodoItem
 
 func clearDoneTasks(a fyne.App, w fyne.Window) {
 	var remainingTasks []*TodoItem
