@@ -3,12 +3,8 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
-	"image/color"
-	"log"
-	"os/exec"
-	"time"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -17,6 +13,11 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/bradhe/stopwatch"
+	_ "github.com/mattn/go-sqlite3"
+	"image/color"
+	"log"
+	"os/exec"
+	"time"
 )
 
 type TodoItem struct {
@@ -33,9 +34,20 @@ type TodoItem struct {
 var todoList []*TodoItem
 
 func main() {
+	initDB()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			fmt.Println("db-error", err)
+			return
+		}
+	}(db)
+
 	a := app.NewWithID("GoDo")
 	w := a.NewWindow("GoDo")
 	w.SetIcon(resourceLogoWindowmanagerWhitePng)
+
+	todoList, _ = getTodoItems()
 
 	if desk, ok := a.(desktop.App); ok {
 		m := fyne.NewMenu("GoDo", fyne.NewMenuItem("show", func() { w.Show() }))
@@ -45,6 +57,11 @@ func main() {
 
 	w.SetContent(makeGUI(a, w))
 	w.Resize(fyne.NewSize(400, 200))
+
+	w.SetCloseIntercept(func() {
+		w.Close()
+	})
+
 	w.ShowAndRun()
 }
 
@@ -82,6 +99,7 @@ func showNewTodoWindow(a fyne.App, w fyne.Window) {
 		}
 
 		todoList = append(todoList, newItem)
+		saveTodoItem(newItem)
 		w.SetContent(makeGUI(a, w))
 		inputWindow.Close()
 	}
@@ -110,56 +128,57 @@ func (t *GoDoTheme) Size(name fyne.ThemeSizeName) float32 {
 	return t.Theme.Size(name)
 }
 
-func (t *TodoItem) StartTimer() {
-	if t.Running {
+func (item *TodoItem) StartTimer() {
+	if item.Running {
 		println("TIMER ALREADY STARTED")
 		return
 	}
 
-	if t.Done == nil {
-		t.Done = make(chan bool)
+	if item.Done == nil {
+		item.Done = make(chan bool)
 	}
 
-	if t.RemainingTime <= 0 {
-		t.RemainingTime, _ = time.ParseDuration(t.Duration.Text)
+	if item.RemainingTime <= 0 {
+		item.RemainingTime, _ = time.ParseDuration(item.Duration.Text)
 	}
 
-	t.Running = true
-	go t.runTimer()
+	item.Running = true
+	go item.runTimer()
 }
 
-func (t *TodoItem) runTimer() {
+func (item *TodoItem) runTimer() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			t.RemainingTime -= time.Second
-			if t.RemainingTime <= 0 {
-				t.StopTimer()
+			item.RemainingTime -= time.Second
+			if item.RemainingTime <= 0 {
+				item.StopTimer()
 				playSound()
 				return
 			}
-			t.Timer.SetText(formatTime(t.RemainingTime))
-		case <-t.Done:
+			item.Timer.SetText(formatTime(item.RemainingTime))
+		case <-item.Done:
 			return
 		}
 	}
 }
 
-func (t *TodoItem) StopTimer() {
-	if t.Running {
-		t.Running = false
-		close(t.Done)
-		t.Done = nil
+func (item *TodoItem) StopTimer() {
+	updateRemainingTime(item)
+	if item.Running {
+		item.Running = false
+		close(item.Done)
+		item.Done = nil
 	}
 }
 
-func (t *TodoItem) ResetTimer() {
-	t.StopTimer()
-	t.RemainingTime, _ = time.ParseDuration(t.Duration.Text)
-	t.Timer.SetText(formatTime(t.RemainingTime))
+func (item *TodoItem) ResetTimer() {
+	item.StopTimer()
+	item.RemainingTime, _ = time.ParseDuration(item.Duration.Text)
+	item.Timer.SetText(formatTime(item.RemainingTime))
 }
 
 func formatTime(d time.Duration) string {
@@ -183,6 +202,8 @@ func clearDoneTasks(a fyne.App, w fyne.Window) {
 	for _, item := range todoList {
 		if !item.Checkbox.Checked {
 			remainingTasks = append(remainingTasks, item)
+		} else {
+			deleteTodoItem(item.Task.Text)
 		}
 	}
 	todoList = remainingTasks
