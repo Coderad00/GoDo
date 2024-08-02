@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fyne.io/fyne/v2/widget"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"time"
@@ -19,11 +20,10 @@ func initDB() {
 
 	createTableQuery := `
 	CREATE TABLE IF NOT EXISTS todos (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id TEXT PRIMARY KEY,
 		task TEXT,
 		duration TEXT,
 		remaining_time TEXT,
-		remaining_time INT
 		completed BOOLEAN
 	);`
 
@@ -34,13 +34,13 @@ func initDB() {
 }
 
 func saveTodoItem(item *TodoItem) error {
-	_, err := db.Exec(`INSERT INTO todos (task, duration, remaining_time, completed) VALUES (?, ?, ?, ?)`,
-		item.Task.Text, item.Duration.Text, item.RemainingTime.String(), item.Checkbox.Checked)
+	_, err := db.Exec(`INSERT INTO todos (id, task, duration, remaining_time, completed) VALUES (?, ?, ?, ?, ?)`,
+		item.ID.String(), item.Task.Text, item.Duration.Text, item.RemainingTime.String(), item.Checkbox.Checked)
 	return err
 }
 
 func getTodoItems() ([]*TodoItem, error) {
-	rows, err := db.Query(`SELECT task, duration, remaining_time, completed FROM todos`)
+	rows, err := db.Query(`SELECT id, task, duration, remaining_time, completed FROM todos`)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +48,12 @@ func getTodoItems() ([]*TodoItem, error) {
 
 	var items []*TodoItem
 	for rows.Next() {
+
+		var id uuid.UUID
 		var task, duration, remainingTimeStr string
 		var completed bool
-		err = rows.Scan(&task, &duration, &remainingTimeStr, &completed)
+
+		err = rows.Scan(&id, &task, &duration, &remainingTimeStr, &completed)
 		if err != nil {
 			return nil, err
 		}
@@ -61,6 +64,7 @@ func getTodoItems() ([]*TodoItem, error) {
 		}
 
 		item := &TodoItem{
+			ID:            id,
 			Checkbox:      widget.NewCheck("", nil),
 			Task:          widget.NewLabel(task),
 			Duration:      widget.NewLabel(duration),
@@ -75,12 +79,12 @@ func getTodoItems() ([]*TodoItem, error) {
 	return items, nil
 }
 
-func deleteTodoItem(task string) error {
-	_, err := db.Exec(`DELETE FROM todos WHERE task = ?`, task)
+func deleteTodoItem(item *TodoItem) error {
+	_, err := db.Exec(`DELETE FROM todos WHERE id = ?`, item.ID.String())
 	return err
 }
 
 func updateRemainingTime(item *TodoItem) error {
-	_, err := db.Exec(`UPDATE todos SET remaining_time = ? WHERE task = ?`, item.RemainingTime.String(), item.Task.Text)
+	_, err := db.Exec(`UPDATE todos SET remaining_time = ? WHERE id = ?`, item.RemainingTime.String(), item.ID.String())
 	return err
 }

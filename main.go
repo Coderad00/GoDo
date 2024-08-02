@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/bradhe/stopwatch"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"image/color"
 	"log"
@@ -21,6 +22,7 @@ import (
 )
 
 type TodoItem struct {
+	ID            uuid.UUID
 	Checkbox      *widget.Check
 	Task          *widget.Label
 	Duration      *widget.Label
@@ -89,6 +91,7 @@ func showNewTodoWindow(a fyne.App, w fyne.Window) {
 		}
 
 		newItem := &TodoItem{
+			ID: uuid.New(),
 			Checkbox: widget.NewCheck("", func(checked bool) {
 				fmt.Println("Checkbox state changed:", checked)
 			}),
@@ -179,6 +182,7 @@ func (item *TodoItem) ResetTimer() {
 	item.StopTimer()
 	item.RemainingTime, _ = time.ParseDuration(item.Duration.Text)
 	item.Timer.SetText(formatTime(item.RemainingTime))
+	updateRemainingTime(item)
 }
 
 func formatTime(d time.Duration) string {
@@ -203,7 +207,7 @@ func clearDoneTasks(a fyne.App, w fyne.Window) {
 		if !item.Checkbox.Checked {
 			remainingTasks = append(remainingTasks, item)
 		} else {
-			deleteTodoItem(item.Task.Text)
+			deleteTodoItem(item)
 		}
 	}
 	todoList = remainingTasks
