@@ -102,7 +102,13 @@ func showNewTodoWindow(a fyne.App, w fyne.Window) {
 		}
 
 		todoList = append(todoList, newItem)
-		saveTodoItem(newItem)
+		err = saveTodoItem(newItem)
+		if err != nil {
+			{
+				log.Fatal(err)
+			}
+			return
+		}
 		w.SetContent(makeGUI(a, w))
 		inputWindow.Close()
 	}
@@ -170,7 +176,10 @@ func (item *TodoItem) runTimer() {
 }
 
 func (item *TodoItem) StopTimer() {
-	updateRemainingTime(item)
+	err := updateRemainingTime(item)
+	if err != nil {
+		return
+	}
 	if item.Running {
 		item.Running = false
 		close(item.Done)
@@ -182,7 +191,10 @@ func (item *TodoItem) ResetTimer() {
 	item.StopTimer()
 	item.RemainingTime, _ = time.ParseDuration(item.Duration.Text)
 	item.Timer.SetText(formatTime(item.RemainingTime))
-	updateRemainingTime(item)
+	err := updateRemainingTime(item)
+	if err != nil {
+		return
+	}
 }
 
 func formatTime(d time.Duration) string {
@@ -207,7 +219,13 @@ func clearDoneTasks(a fyne.App, w fyne.Window) {
 		if !item.Checkbox.Checked {
 			remainingTasks = append(remainingTasks, item)
 		} else {
-			deleteTodoItem(item)
+			err := deleteTodoItem(item)
+			if err != nil {
+				{
+					log.Fatal(err)
+				}
+				return
+			}
 		}
 	}
 	todoList = remainingTasks
