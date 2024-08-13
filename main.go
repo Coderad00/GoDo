@@ -281,7 +281,7 @@ func makeTodoListContainer() fyne.CanvasObject {
 }
 
 func makeLogo() fyne.CanvasObject {
-	logo := canvas.NewImageFromResource(resourcePNGGODOLogoPng)
+	logo := canvas.NewImageFromResource(resourceIconSystemTrayPng)
 	logo.FillMode = canvas.ImageFillContain
 	logo.SetMinSize(fyne.NewSize(100, 50))
 	return logo
